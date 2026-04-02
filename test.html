@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>애드블럭 테스트 사이트</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .description {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        /* 가짜 광고 영역 스타일링 (차단되지 않았을 때 눈에 띄게 표시) */
+        .ad-box {
+            border: 2px dashed #ff0000;
+            padding: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            background-color: #ffe6e6;
+        }
+        .banner-ad {
+            width: 100%;
+            height: 90px;
+            line-height: 90px;
+            background-color: #ffcccc;
+            font-weight: bold;
+            color: #d80000;
+        }
+        #sidebar-advertisement {
+            width: 300px;
+            height: 250px;
+            line-height: 250px;
+            float: right;
+            margin-left: 20px;
+            background-color: #ffb3b3;
+            font-weight: bold;
+        }
+        .sponsored-content {
+            background-color: #fff0b3;
+            padding: 15px;
+            border: 1px solid #ffcc00;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>테스트용 사이트</h1>
+    
+    <div class="description">
+        <p>이 페이지는 애드블럭 작동 여부를 테스트하기 위해 만들어졌습니다.<br>
+        <strong>애드블럭이 켜져 있다면 아래의 붉은색/노란색 박스들(광고 영역)이 화면에서 사라지거나 빈 공간으로 처리되어야 합니다.</strong></p>
+    </div>
+
+    <h2>1. 클래스/ID 기반 배너 광고 테스트</h2>
+    <p>일반적으로 'ad', 'banner', 'advertisement' 등의 단어가 들어간 클래스/아이디를 차단합니다.</p>
+    
+    <div id="sidebar-advertisement" class="ad">
+        사이드바 광고 (이 박스가 보이면 차단 실패)
+    </div>
+
+    <div class="ad-box">
+        <div class="banner-ad" id="top-ad">
+            상단 배너 광고 영역 (class="banner-ad")
+        </div>
+    </div>
+
+    <div style="clear: both;"></div>
+
+    <h2>2. 스폰서 게시물 (Native Ad) 테스트</h2>
+    <p>기사나 본문 사이에 끼워넣는 스폰서 형태의 광고 영역입니다.</p>
+    <div class="ad-box">
+        <div class="sponsored-content">
+            <h3>[스폰서] 당신이 몰랐던 놀라운 사실!</h3>
+            <p>이 영역도 애드블럭 필터에 따라 차단될 수 있습니다. (class="sponsored-content")</p>
+        </div>
+    </div>
+
+    <h2>3. 실제 광고 네트워크 스크립트 차단 테스트</h2>
+    <p>구글 애드센스와 같은 외부 스크립트 로드 및 HTML 태그를 차단하는지 테스트합니다.</p>
+    <div class="ad-box" style="padding: 20px;">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <ins class="adsbygoogle"
+             style="display:block; background-color: #ddd; height: 100px; line-height: 100px;"
+             data-ad-client="ca-pub-0000000000000000"
+             data-ad-slot="0000000000"
+             data-ad-format="auto">
+             구글 애드센스 영역 (스크립트가 차단되면 이 박스가 통째로 사라지거나 내용이 비워집니다)
+        </ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+    </div>
+
+    <h2>4. 광고 이미지 링크 테스트</h2>
+    <div class="ad-box">
+        <img src="https://via.placeholder.com/728x90.png?text=Ad+Banner" alt="광고 배너 이미지" class="ad-banner-image">
+        <p>이미지 주소나 클래스 이름에 'ad'가 들어가서 차단되는지 확인합니다.</p>
+    </div>
+
+</body>
+</html>
