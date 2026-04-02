@@ -1,7 +1,114 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <script src="http://localhost:3000/api/v1/verify?uid=TEST_UID" onerror="document.documentElement.innerHTML='<style>body{background:#111!important;color:#ffaa00!important;height:100vh!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:24px!important;font-weight:bold!important;font-family:sans-serif!important;text-align:center!important;word-break:keep-all!important;padding:20px!important;overflow:hidden!important}</style><body>광<span>&#8203;</span>고 차<span>&#8203;</span>단기(시<span>&#8203;</span>스템 차<span>&#8203;</span>단)가 감지되었습니다.<br/>해제 후 새<span>&#8203;</span>로고침 해주세요.</body>'"></script>
+<script>
+(function() {
+    const autoUI = true;
+    const AdGuardMonitor = {
+        isDetected: false,
+        check: function(callback) {
+            const self = this;
+            let detectedCount = 0;
+            const threshold = 1;
+            let hasTriggered = false;
+            const triggerDetected = () => {
+                if (hasTriggered) return;
+                hasTriggered = true;
+                self.isDetected = true;
+                if (typeof callback === 'function') callback(true);
+                const event = new CustomEvent('adblockDetected');
+                window.dispatchEvent(event);
+                if (autoUI) {
+                    if (document.body) {
+                        self.injectUI();
+                    } else {
+                        window.addEventListener('DOMContentLoaded', () => self.injectUI());
+                    }
+                }
+            };
+            const triggerClear = () => {
+                if (!hasTriggered) {
+                    self.isDetected = false;
+                    if (typeof callback === 'function') callback(false);
+                    self.removeUI();
+                }
+            };
+            const scriptBait = document.createElement('script');
+            scriptBait.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js";
+            scriptBait.async = true;
+            scriptBait.onerror = () => {
+                detectedCount++;
+                if (detectedCount >= threshold) triggerDetected();
+            };
+            document.head.appendChild(scriptBait);
+            if (document.body) {
+                const bait = document.createElement('div');
+                bait.innerHTML = '&nbsp;';
+                bait.className = 'pub_300x250 pub_300x250m pub_728x90 text-ad textAd text_ad text_ads text-ads text-ad-links';
+                bait.style.position = 'absolute';
+                bait.style.left = '-9999px';
+                bait.style.width = '1px';
+                bait.style.height = '1px';
+                document.body.appendChild(bait);
+                setTimeout(() => {
+                    if (bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none') {
+                        detectedCount++;
+                        if (detectedCount >= threshold) triggerDetected();
+                    } else {
+                        triggerClear();
+                    }
+                    bait.remove();
+                }, 150);
+            }
+        },
+        injectUI: function() {
+            if (this.overlayId && document.getElementById(this.overlayId)) return;
+            const randStr = () => 'ag_' + Math.random().toString(36).substring(2, 9);
+            const overlayId = randStr();
+            const modalId = randStr();
+            const btnId = randStr();
+            if (document.body) {
+                document.body.innerHTML = '';
+            }
+            const overlay = document.createElement('div');
+            overlay.id = overlayId;
+            overlay.setAttribute('style', 'position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background-color:rgba(0,0,0,0.85) !important; z-index:2147483647 !important; display:flex !important; justify-content:center !important; align-items:center !important; backdrop-filter:blur(5px) !important; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif !important;');
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.setAttribute('style', 'background:#1f1f1f !important; border:1px solid #333 !important; border-radius:12px !important; padding:30px 40px !important; max-width:90% !important; width:500px !important; text-align:center !important; color:#f1f1f1 !important; box-shadow:0 10px 30px rgba(0,0,0,0.5) !important;');
+            modal.innerHTML = `
+                <div style="font-size:48px; margin-bottom:15px; color:#ffcc00;">⚠️</div>
+                <h2 style="font-size:22px; margin:0 0 20px; font-weight:700; color:#fff; word-break:keep-all;">광<span>&#8203;</span>고 차<span>&#8203;</span>단 프로그램이 활성화되어 있습니다</h2>
+                <p style="font-size:15px; line-height:1.6; margin-bottom:30px; color:#ccc; word-break:keep-all;">이 웹사이트는 전적으로 광고 수익을 통해 무료로 운영되고 있습니다. <br/>
+                원활한 서비스 이용과 지속적인 업데이트를 위해 <br/>
+                <strong style="color:#ffaa00;font-weight:600;">광<span>&#8203;</span>고 차<span>&#8203;</span>단 기능을 해제하시거나 예외 사이트로 등록해 주세요.</strong></p>
+                <button id="${btnId}" style="background-color:#ffaa00; color:#111; border:none; padding:12px 24px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; white-space:nowrap;">해제 후 새<span>&#8203;</span>로고침</button>
+            `;
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            document.body.style.cssText += 'overflow: hidden !important; background-color: #000 !important;';
+            document.getElementById(btnId).onclick = function() {
+                window.location.reload();
+            };
+            this.overlayId = overlayId;
+        },
+        removeUI: function() {
+            if (this.overlayId) {
+                const overlay = document.getElementById(this.overlayId);
+                if (overlay) overlay.remove();
+                document.body.style.overflow = '';
+            }
+        }
+    };
+    window.AdGuardMonitor = AdGuardMonitor;
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        AdGuardMonitor.check();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => AdGuardMonitor.check());
+    }
+    window.addEventListener('focus', () => AdGuardMonitor.check());
+})();
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>애드블럭 테스트 사이트</title>
