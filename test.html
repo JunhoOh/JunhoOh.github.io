@@ -7,78 +7,62 @@
     const __srvMetricsCore = {
         isDetected: false,
         check: function(callback) {
+            if (this.isDetected) return;
             const self = this;
-            let hasTriggered = false;
             
             const triggerDetected = () => {
-                if (hasTriggered) return;
-                hasTriggered = true;
+                if (self.isDetected) return;
                 self.isDetected = true;
                 if (typeof callback === 'function') callback(true);
-                const event = new CustomEvent('sysStateEvent_403');
-                window.dispatchEvent(event);
+                
+                window.dispatchEvent(new CustomEvent('sysStateEvent_403'));
+                
                 if (autoUI) {
                     if (document.body) self.injectUI();
                     else window.addEventListener('DOMContentLoaded', () => self.injectUI());
                 }
             };
             
-            // 1. Fetch Request Trap (Instant uncatchable network block detection)
-            const trapUrls = [
-                'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
-                'https://www.google-analytics.com/analytics.js'
-            ];
-            trapUrls.forEach(url => {
-                fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
-                .catch(() => { triggerDetected(); });
-            });
-
-            // 2. Script Tag Trap (Fallback)
-            const scriptBait = document.createElement('script');
-            scriptBait.src = trapUrls[0];
-            scriptBait.onerror = () => triggerDetected();
-            document.head.appendChild(scriptBait);
+            // 1. Image Tracking Pixel (gachaFront 기반 순수 로직)
+            // 치명적 버그 수정 완료: src 할당 전에 onerror를 먼저 바인딩해야 즉각형 Network 차단을 잡습니다.
+            const img = new Image();
+            img.onerror = () => triggerDetected();
+            img.onload = () => { if (typeof callback === 'function') callback(false); };
+            const cacheBuster = Math.random().toString(36).substring(2) + new Date().getTime();
+            img.src = 'https://ad.doubleclick.net/ddm/trackimp/N1234.567890.DOUBLECLICK/B1234567.123456789;dc_trk_aid=123456789;dc_trk_cid=123456789;ord=' + cacheBuster + '?';
             
-            // 3. Ultimate DOM Cosmetic Trap
+            // 2. Fetch Trap (통신망 자체를 차단하는 강력한 차단기 대비)
+            try {
+                fetch('https://www.google-analytics.com/analytics.js', { mode: 'no-cors', cache: 'no-store' })
+                    .catch(() => triggerDetected());
+            } catch (e) {}
+            
+            // 3. Script Loading Trap (스크립트 아키텍처 레벨 차단기 대비)
+            const scriptReq = document.createElement('script');
+            scriptReq.onerror = () => triggerDetected();
+            scriptReq.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+            if (document.head) document.head.appendChild(scriptReq);
+            
+            // 4. DOM Bait Trap (모든 안티애드블록을 뚫는 최강의 보험, 화면 중앙에 보이지 않게 삽입)
             const checkDOM = () => {
                 const bait = document.createElement('div');
-                bait.innerHTML = '&nbsp;';
-                bait.className = 'adsbygoogle ad-banner doubleclick ad-container pub_300x250';
-                bait.style.position = 'absolute';
-                bait.style.left = '-9999px';
-                bait.style.top = '-9999px';
-                bait.style.width = '20px';
-                bait.style.height = '20px';
-                bait.style.display = 'block';
+                bait.className = 'ad-banner adsbygoogle pub_300x250'; 
+                bait.style.position = 'fixed';
+                bait.style.top = '10px';
+                bait.style.left = '10px';
+                bait.style.width = '1px';
+                bait.style.height = '1px';
+                bait.style.opacity = '0.0001';
+                bait.style.pointerEvents = 'none';
                 document.body.appendChild(bait);
                 
-                // MutationObserver catches AdBlockers that physically delete the DOM node
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        Array.from(mutation.removedNodes).forEach((node) => {
-                            if (node === bait) triggerDetected();
-                        });
-                    });
-                });
-                observer.observe(document.body, { childList: true });
-
-                let ticks = 0;
-                let chk = setInterval(() => {
-                    if (!bait.parentNode) { 
-                        clearInterval(chk); 
-                        triggerDetected(); 
-                        return; 
-                    }
+                setTimeout(() => {
                     const style = window.getComputedStyle(bait);
-                    if (bait.offsetHeight === 0 || bait.offsetWidth === 0 || style.display === 'none' || style.visibility === 'hidden') {
-                        clearInterval(chk);
+                    if (bait.offsetHeight === 0 || style.display === 'none' || !bait.parentNode) {
                         triggerDetected();
-                    } else if (++ticks > 60) { // Polling up to 3000ms (60 * 50ms)
-                        clearInterval(chk);
-                        observer.disconnect();
-                        bait.remove();
                     }
-                }, 50);
+                    if (bait.parentNode) bait.remove();
+                }, 500); 
             };
 
             if (document.body) checkDOM();
@@ -91,12 +75,8 @@
             const overlayId = randStr();
             const modalId = randStr();
             const btnId = randStr();
-            const styleId = randStr();
-
-            if (document.body) document.body.innerHTML = '';
 
             const style = document.createElement('style');
-            style.id = styleId;
             style.innerHTML = `
                 @keyframes agPulse {
                     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 170, 0, 0.4); }
@@ -159,13 +139,11 @@
                     box-shadow: 0 8px 25px rgba(255, 170, 0, 0.4) !important;
                 }
             `;
-            document.head.appendChild(style);
-
+            
             const overlay = document.createElement('div');
             overlay.id = overlayId;
             const modal = document.createElement('div');
             modal.id = modalId;
-            
             modal.innerHTML = `
                 <div class="ag-icon-wrapper">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffaa00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -176,35 +154,28 @@
                 이 웹사이트를 예외로 등록해 주세요.</p>
                 <button id="${btnId}">해제 후 새<span>&#8203;</span>로고침</button>
             `;
-            
             overlay.appendChild(modal);
-            document.body.appendChild(overlay);
             
-            document.body.style.cssText += 'overflow: hidden !important; background-color: #050505 !important;';
-
-            document.getElementById(btnId).onclick = function() {
-                window.location.reload();
+            const applyDOM = () => {
+                document.head.appendChild(style);
+                document.body.appendChild(overlay);
+                document.body.style.cssText += 'overflow: hidden !important; background-color: #050505 !important;';
+                setTimeout(() => { document.getElementById(btnId).onclick = () => window.location.reload(); }, 50);
             };
             
+            if (document.body) applyDOM();
+            else window.addEventListener('DOMContentLoaded', applyDOM);
             this.overlayId = overlayId;
-        },
-        
-        removeUI: function() {
-            if (this.overlayId) {
-                const overlay = document.getElementById(this.overlayId);
-                if (overlay) overlay.remove();
-                document.body.style.overflow = '';
-            }
         }
     };
     
     window.__srvMetricsCore = __srvMetricsCore;
+    const runCheck = () => __srvMetricsCore.check();
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        __srvMetricsCore.check();
+        runCheck();
     } else {
-        document.addEventListener('DOMContentLoaded', () => __srvMetricsCore.check());
+        document.addEventListener('DOMContentLoaded', runCheck);
     }
-    window.addEventListener('focus', () => __srvMetricsCore.check());
 })();
 </script>
     <meta charset="UTF-8">
@@ -290,7 +261,9 @@
     <h2>3. 실제 광고 네트워크 스크립트 차단 테스트</h2>
     <p>구글 애드센스와 같은 외부 스크립트 로드 및 HTML 태그를 차단하는지 테스트합니다.</p>
     <div class="ad-box" style="padding: 20px;">
+        <!-- 구글에서 가이드하는 기본 비동기 광고 코드 -->
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <!-- 광고 영역 표시 -->
         <ins class="adsbygoogle"
              style="display:block; background-color: #ddd; height: 100px; line-height: 100px;"
              data-ad-client="ca-pub-0000000000000000"
